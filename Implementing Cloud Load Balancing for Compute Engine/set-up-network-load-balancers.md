@@ -65,11 +65,18 @@ Apache is installed automatically, and each instance serves a unique homepage.
 ### 1. Create VM Instance: www1
 
 ```bash
-gcloud compute instances create www1   --zone=ZONE   --tags=network-lb-tag   --machine-type=e2-small   --image-family=debian-11   --image-project=debian-cloud   --metadata=startup-script='#!/bin/bash
-    apt-get update
-    apt-get install apache2 -y
-    service apache2 restart
-    echo "<h3>Web Server: www1</h3>" | tee /var/www/html/index.html'
+gcloud compute instances create www1 \
+    --zone=Zone \
+    --tags=network-lb-tag \
+    --machine-type=e2-small \
+    --image-family=debian-11 \
+    --image-project=debian-cloud \
+    --metadata=startup-script='#!/bin/bash
+      apt-get update
+      apt-get install apache2 -y
+      service apache2 restart
+      echo "
+<h3>Web Server: www1</h3>" | tee /var/www/html/index.html'
 ```
 
 ---
@@ -77,11 +84,18 @@ gcloud compute instances create www1   --zone=ZONE   --tags=network-lb-tag   --m
 ### 2. Create VM Instance: www2
 
 ```bash
-gcloud compute instances create www2   --zone=ZONE   --tags=network-lb-tag   --machine-type=e2-small   --image-family=debian-11   --image-project=debian-cloud   --metadata=startup-script='#!/bin/bash
-    apt-get update
-    apt-get install apache2 -y
-    service apache2 restart
-    echo "<h3>Web Server: www2</h3>" | tee /var/www/html/index.html'
+gcloud compute instances create www2 \
+    --zone=Zone \
+    --tags=network-lb-tag \
+    --machine-type=e2-small \
+    --image-family=debian-11 \
+    --image-project=debian-cloud \
+    --metadata=startup-script='#!/bin/bash
+      apt-get update
+      apt-get install apache2 -y
+      service apache2 restart
+      echo "
+<h3>Web Server: www2</h3>" | tee /var/www/html/index.html'
 ```
 
 ---
@@ -95,7 +109,8 @@ Repeat the same steps as above to create a third VM named `www3`, updating the H
 ### 4. Create Firewall Rule to Allow HTTP Traffic
 
 ```bash
-gcloud compute firewall-rules create www-firewall-network-lb   --target-tags network-lb-tag   --allow tcp:80
+gcloud compute firewall-rules create www-firewall-network-lb \
+    --target-tags network-lb-tag --allow tcp:80
 ```
 
 ---
@@ -125,7 +140,8 @@ curl http://IP_ADDRESS
 ### 1. Create a Static External IP Address
 
 ```bash
-gcloud compute addresses create network-lb-ip-1   --region REGION
+gcloud compute addresses create network-lb-ip-1 \
+  --region Region
 ```
 
 **Output:**
@@ -153,7 +169,8 @@ All backend instances must reside in the same Google Cloud region.
 ### 1. Create Target Pool
 
 ```bash
-gcloud compute target-pools create www-pool   --region REGION   --http-health-check basic-check
+gcloud compute target-pools create www-pool \
+  --region Region --http-health-check basic-check
 ```
 
 ---
@@ -161,7 +178,8 @@ gcloud compute target-pools create www-pool   --region REGION   --http-health-ch
 ### 2. Add Instances to the Target Pool
 
 ```bash
-gcloud compute target-pools add-instances www-pool   --instances www1,www2,www3
+gcloud compute target-pools add-instances www-pool \
+    --instances www1,www2,www3
 ```
 
 ---
@@ -169,7 +187,11 @@ gcloud compute target-pools add-instances www-pool   --instances www1,www2,www3
 ### 3. Create Forwarding Rule
 
 ```bash
-gcloud compute forwarding-rules create www-rule   --region REGION   --ports 80   --address network-lb-ip-1   --target-pool www-pool
+gcloud compute forwarding-rules create www-rule \
+    --region  Region \
+    --ports 80 \
+    --address network-lb-ip-1 \
+    --target-pool www-pool
 ```
 
 ---

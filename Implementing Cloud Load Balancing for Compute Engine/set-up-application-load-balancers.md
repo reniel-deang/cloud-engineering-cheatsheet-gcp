@@ -44,11 +44,18 @@ Each instance installs Apache and serves a unique home page.
 ### 1. Create VM Instance: www1
 
 ```bash
-gcloud compute instances create www1   --zone=Zone   --tags=network-lb-tag   --machine-type=e2-small   --image-family=debian-11   --image-project=debian-cloud   --metadata=startup-script='#!/bin/bash
-    apt-get update
-    apt-get install apache2 -y
-    service apache2 restart
-    echo "<h3>Web Server: www1</h3>" | tee /var/www/html/index.html'
+gcloud compute instances create www1 \
+    --zone=Zone \
+    --tags=network-lb-tag \
+    --machine-type=e2-small \
+    --image-family=debian-11 \
+    --image-project=debian-cloud \
+    --metadata=startup-script='#!/bin/bash
+      apt-get update
+      apt-get install apache2 -y
+      service apache2 restart
+      echo "
+<h3>Web Server: www1</h3>" | tee /var/www/html/index.html'
 ```
 
 ---
@@ -62,7 +69,8 @@ Repeat the same command above for `www2` and `www3`, updating the HTML content a
 ### 3. Create Firewall Rule to Allow HTTP Traffic
 
 ```bash
-gcloud compute firewall-rules create www-firewall-network-lb   --target-tags network-lb-tag   --allow tcp:80
+gcloud compute firewall-rules create www-firewall-network-lb \
+    --target-tags network-lb-tag --allow tcp:80
 ```
 
 ---
@@ -100,14 +108,24 @@ For this setup, managed instance groups (MIGs) are used.
 ### 1. Create an Instance Template
 
 ```bash
-gcloud compute instance-templates create lb-backend-template   --region=Region   --network=default   --subnet=default   --tags=allow-health-check   --machine-type=e2-medium   --image-family=debian-11   --image-project=debian-cloud   --metadata=startup-script='#!/bin/bash
-    apt-get update
-    apt-get install apache2 -y
-    a2ensite default-ssl
-    a2enmod ssl
-    vm_hostname="$(curl -H "Metadata-Flavor:Google"     http://169.254.169.254/computeMetadata/v1/instance/name)"
-    echo "Page served from: $vm_hostname" | tee /var/www/html/index.html
-    systemctl restart apache2'
+gcloud compute instance-templates create lb-backend-template \
+   --region=Region \
+   --network=default \
+   --subnet=default \
+   --tags=allow-health-check \
+   --machine-type=e2-medium \
+   --image-family=debian-11 \
+   --image-project=debian-cloud \
+   --metadata=startup-script='#!/bin/bash
+     apt-get update
+     apt-get install apache2 -y
+     a2ensite default-ssl
+     a2enmod ssl
+     vm_hostname="$(curl -H "Metadata-Flavor:Google" \
+     http://169.254.169.254/computeMetadata/v1/instance/name)"
+     echo "Page served from: $vm_hostname" | \
+     tee /var/www/html/index.html
+     systemctl restart apache2'
 ```
 
 ---
@@ -115,7 +133,8 @@ gcloud compute instance-templates create lb-backend-template   --region=Region  
 ### 2. Create a Managed Instance Group
 
 ```bash
-gcloud compute instance-groups managed create lb-backend-group   --template=lb-backend-template   --size=2   --zone=Zone
+gcloud compute instance-groups managed create lb-backend-group \
+   --template=lb-backend-template --size=2 --zone=Zone
 ```
 
 ---
@@ -123,7 +142,13 @@ gcloud compute instance-groups managed create lb-backend-group   --template=lb-b
 ### 3. Create Firewall Rule for Health Checks
 
 ```bash
-gcloud compute firewall-rules create fw-allow-health-check   --network=default   --action=allow   --direction=ingress   --source-ranges=130.211.0.0/22,35.191.0.0/16   --target-tags=allow-health-check   --rules=tcp:80
+gcloud compute firewall-rules create fw-allow-health-check \
+  --network=default \
+  --action=allow \
+  --direction=ingress \
+  --source-ranges=130.211.0.0/22,35.191.0.0/16 \
+  --target-tags=allow-health-check \
+  --rules=tcp:80
 ```
 
 Note: This ingress rule allows traffic from Google Cloud health checking systems.
@@ -133,13 +158,17 @@ Note: This ingress rule allows traffic from Google Cloud health checking systems
 ### 4. Create a Global Static External IP Address
 
 ```bash
-gcloud compute addresses create lb-ipv4-1   --ip-version=IPV4   --global
+gcloud compute addresses create lb-ipv4-1 \
+  --ip-version=IPV4 \
+  --global
 ```
 
 View the reserved IP address:
 
 ```bash
-gcloud compute addresses describe lb-ipv4-1   --format="get(address)"   --global
+gcloud compute addresses describe lb-ipv4-1 \
+  --format="get(address)" \
+  --global
 ```
 
 ---
@@ -147,7 +176,8 @@ gcloud compute addresses describe lb-ipv4-1   --format="get(address)"   --global
 ### 5. Create a Health Check
 
 ```bash
-gcloud compute health-checks create http http-basic-check   --port 80
+gcloud compute health-checks create http http-basic-check \
+  --port 80
 ```
 
 ---
@@ -155,7 +185,11 @@ gcloud compute health-checks create http http-basic-check   --port 80
 ### 6. Create a Backend Service
 
 ```bash
-gcloud compute backend-services create web-backend-service   --protocol=HTTP   --port-name=http   --health-checks=http-basic-check   --global
+gcloud compute backend-services create web-backend-service \
+  --protocol=HTTP \
+  --port-name=http \
+  --health-checks=http-basic-check \
+  --global
 ```
 
 ---
@@ -163,7 +197,10 @@ gcloud compute backend-services create web-backend-service   --protocol=HTTP   -
 ### 7. Add Instance Group to Backend Service
 
 ```bash
-gcloud compute backend-services add-backend web-backend-service   --instance-group=lb-backend-group   --instance-group-zone=Zone   --global
+gcloud compute backend-services add-backend web-backend-service \
+  --instance-group=lb-backend-group \
+  --instance-group-zone=Zone \
+  --global
 ```
 
 ---
@@ -171,7 +208,8 @@ gcloud compute backend-services add-backend web-backend-service   --instance-gro
 ### 8. Create a URL Map
 
 ```bash
-gcloud compute url-maps create web-map-http   --default-service web-backend-service
+gcloud compute url-maps create web-map-http \
+    --default-service web-backend-service
 ```
 
 ---
@@ -179,7 +217,8 @@ gcloud compute url-maps create web-map-http   --default-service web-backend-serv
 ### 9. Create a Target HTTP Proxy
 
 ```bash
-gcloud compute target-http-proxies create http-lb-proxy   --url-map web-map-http
+gcloud compute target-http-proxies create http-lb-proxy \
+    --url-map web-map-http
 ```
 
 ---
@@ -187,7 +226,11 @@ gcloud compute target-http-proxies create http-lb-proxy   --url-map web-map-http
 ### 10. Create a Global Forwarding Rule
 
 ```bash
-gcloud compute forwarding-rules create http-content-rule   --address=lb-ipv4-1   --global   --target-http-proxy=http-lb-proxy   --ports=80
+gcloud compute forwarding-rules create http-content-rule \
+   --address=lb-ipv4-1\
+   --global \
+   --target-http-proxy=http-lb-proxy \
+   --ports=80
 ```
 
 ---
